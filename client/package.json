@@ -1,0 +1,21 @@
+{
+  "name": "RxMultiplayer",
+  "version": "0.0.1",
+  "description": "Show rxpy + baconjs in developing multiplayer game",
+  "main": "index.js",
+  "dependencies": {
+    "pixi.js": "^3.0.9",
+    "grunt": "^0.4.5"
+  },
+  "devDependencies": {
+    "baconjs": "^0.7.83",
+    "grunt-browserify": "^4.0.1",
+    "grunt-contrib-coffee": "^0.13.0",
+    "grunt-contrib-watch": "^0.6.1"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
