@@ -26,16 +26,15 @@ logIn = ({messages, ws}) ->
 
 
 startGame = (enterFrame, clicks, c) ->
-  enterFrame
-
   connection = connectToServer(c)
   {user, newPlayers, updates} = logIn(connection)
 
   userHero = user
     .sampledBy(newPlayers, (user, hero) -> {user, hero})
     .filter(({user, hero}) -> user.id == hero.id)
+    .toProperty()
 
-  view = createView(newPlayers, updates, userHero)
+  view = createView(newPlayers, updates, enterFrame, userHero, c)
 
   clicks
     .onValue((m) ->

@@ -1,11 +1,17 @@
 PIXI = require("pixi.js")
 Bacon = require("baconjs")
 
-createView = (newOnes, updates, user) ->
+createView = (newOnes, updates, enterFrame, user, c) ->
   view = new PIXI.Container()
+
+  back = createBack(c.MAP_WIDTH, c.MAP_WIDTH)
+  view.addChild(back)
 
   newOnes.onValue((p) -> addPlayer(view, p))
   updates.onValue((d) -> updatePlayers(view, d))
+  user.sampledBy(enterFrame, (u, e) ->
+    {id:u.hero.id, view, c}
+  ).onValue(onEnterFrame)
 
   view
 
@@ -29,18 +35,42 @@ addPlayer = (container, player) =>
   container.addChild(view)
   container
 
-updatePlayers = (container, updates) =>
+# center view on player
+onEnterFrame = ({id, view, c}) ->
+  hero = view.getChildByName(id)
+  nX = c.APP_WIDTH / 2 - hero.x
+  nY = c.APP_HEIGHT / 2 - hero.y
+  view.x = lerp(view.x, nX, 0.2)
+  view.y = lerp(view.y, nY, 0.2)
+
+updatePlayers = (container, updates) ->
   doUpdatePlayer(container.getChildByName(id), data) for {id, data} in updates
   container
 
 doUpdatePlayer = (view, info) ->
-  console.log("do update", typeof(info))
   switch true
     when typeof info is "object"
       view.x = info.x
       view.y = info.y
-      console.log("setting x", view.x, view.y, info.x, info.y)
     else
 #      view.scale
       console.log("change size")
+
+createBack = (w, h) ->
+  g = new PIXI.Graphics()
+  g.beginFill(0xbbbbbb)
+  g.drawRect(0, 0, 21, 21)
+  g.lineStyle(1, 0x000000)
+  g.moveTo(0, 11)
+  g.lineTo(21, 11)
+  g.moveTo(11, 0)
+  g.lineTo(11, 21)
+  g.endFill()
+  texture = g.generateTexture()
+  new PIXI.TilingSprite(texture, w, h)
+
+# linear interpolation
+lerp = (a, b, t) ->
+  a * (1 - t) + b * t
+
 module.exports = createView

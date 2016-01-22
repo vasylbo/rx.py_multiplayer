@@ -5,6 +5,8 @@ Bacon = require("baconjs")
 c =
   APP_WIDTH: 800
   APP_HEIGHT: 600
+  MAP_WIDTH: 2000
+  MAP_HEIGHT: 2000
   url: 'ws://localhost:8765'
 
 initResize = (renderer) ->
