@@ -8,12 +8,11 @@ from rx.subjects import Subject
 from connection import WSHandlerSubject, WSSubject
 from integrator import integrate
 from names import generate_name
-from python import Player
+from player import Player
 
 global_id = 0
 START_SIZE = 40
 START_POS = {"x": 500, "y": 500}
-MAP_SIZE = {"width": 2000, "height": 2000}
 
 
 def register(ws_subject: WSSubject, i):

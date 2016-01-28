@@ -5,6 +5,8 @@ from functools import partial
 from rx import Observable
 from rx.subjects import ReplaySubject
 
+from player import Player
+
 log = logging.getLogger("game")
 
 
@@ -27,17 +29,29 @@ def integrate(new_players, scheduler):
         .scan(players_changed, []) \
         .subscribe(players)
 
-    changed_players = players \
-        .flat_map_latest(partial(players_to_changes, scheduler))
+    # frame ticks
+    stream_changes(player_to_change, 66, players, scheduler) \
+        .subscribe(broadcast_changes)
 
-    # update ticks
-    changed_players \
-        .buffer_with_time(66, scheduler=scheduler) \
-        .filter(lambda changes: len(changes) > 0) \
+    # direction update ticks
+    stream_changes(player_to_direction, 33, players, scheduler) \
+        .subscribe(broadcast_changes)
+
+
+def stream_changes(transformer, dt, players, scheduler):
+    def to_changes(ps):
+        return Observable \
+            .from_iterable(ps, scheduler) \
+            .flat_map(partial(
+                transformer, scheduler))
+
+    return players \
+        .flat_map_latest(to_changes) \
+        .buffer_with_time(dt, scheduler=scheduler) \
+        .filter(lambda cs: len(cs) > 0) \
         .combine_latest(
             players,
-            lambda c, p: (c, p)) \
-        .subscribe(tick_updates)
+            lambda c, p: (c, p))
 
 
 def players_to_exits(player):
@@ -48,21 +62,24 @@ def players_to_exits(player):
         .map(lambda _: player)
 
 
-def players_to_changes(scheduler, players: list):
-    return Observable \
-        .from_iterable(players, scheduler) \
-        .flat_map(partial(flat_map_player, scheduler))
+def prepare_data(player: Player, t):
+    return lambda data: {
+        "id": player.id,
+        "t": t,
+        "data": data
+    }
 
 
-def prepare_data(player, data):
-    info = {"id": player.id, "data": data}
-    return player.ws_subject, info
+def player_to_change(scheduler, player: Player):
+    return player.pos.map(
+            prepare_data(player, "pos")) \
+        .merge(scheduler, player.size.map(
+            prepare_data(player, "size")))
 
 
-def flat_map_player(scheduler, player):
-    return player.pos \
-        .merge(scheduler, player.size) \
-        .map(partial(prepare_data, player))
+def player_to_direction(scheduler, player: Player):
+    return player.dir \
+        .map(prepare_data(player, "d"))
 
 
 def players_changed(players: list, operation):
@@ -94,9 +111,9 @@ def create_full_player_info(player):
     return message
 
 
-def tick_updates(data):
+def broadcast_changes(data):
     updates, players = data
-    changes = [data for _, data in updates]
-    message = json.dumps({"t": "up", "data": changes})
+    raw = {"t": "up", "data": updates}
+    message = json.dumps(raw)
     for player in players:
         player.ws_subject.on_next(message)

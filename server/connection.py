@@ -23,9 +23,12 @@ class WSSubject(Observer):
         self._web_socket.send_str(data)
 
     def on_completed(self):
+        # close web socket
+        # has to be coroutine to close ws
         pass
 
     def on_error(self, error):
+        # send error and close web socket
         pass
 
 

@@ -10,7 +10,7 @@ createView = (newOnes, updates, enterFrame, user, c) ->
   newOnes.onValue((p) -> addPlayer(view, p))
   updates.onValue((d) -> updatePlayers(view, d))
   user.sampledBy(enterFrame, (u, e) ->
-    {id:u.hero.id, view, c}
+    {id: u.hero.id, view, c}
   ).onValue(onEnterFrame)
 
   view
@@ -44,16 +44,18 @@ onEnterFrame = ({id, view, c}) ->
   view.y = lerp(view.y, nY, 0.2)
 
 updatePlayers = (container, updates) ->
-  doUpdatePlayer(container.getChildByName(id), data) for {id, data} in updates
+  for {id, t, data} in updates
+    view = container.getChildByName(id)
+    doUpdatePlayer(view, t, data)
   container
 
-doUpdatePlayer = (view, info) ->
-  switch true
-    when typeof info is "object"
-      view.x = info.x
-      view.y = info.y
+doUpdatePlayer = (view, type, data) ->
+  switch type
+    when "pos"
+      view.x = data.x
+      view.y = data.y
     else
-#      view.scale
+    #      view.scale
       console.log("change size")
 
 createBack = (w, h) ->

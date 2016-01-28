@@ -1,7 +1,10 @@
 import json
+import logging
 from json import JSONEncoder
 
 from rx.subjects import BehaviorSubject
+
+log = logging.getLogger("game")
 
 
 class PlayerEncoder(JSONEncoder):
@@ -20,7 +23,7 @@ class PlayerEncoder(JSONEncoder):
 
 class Player:
     def __init__(self, id, name, ws_subject, size, pos):
-        print("new player", id, name, pos)
+        log.info("New player %s" % name)
         self.id = id
         self.ws_subject = ws_subject
         self.name = name
