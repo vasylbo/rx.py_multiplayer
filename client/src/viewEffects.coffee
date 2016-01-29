@@ -8,7 +8,38 @@ createView = (newOnes, updates, enterFrame, user, c) ->
   view.addChild(back)
 
   newOnes.onValue((p) -> addPlayer(view, p))
-  updates.onValue((d) -> updatePlayers(view, d))
+
+  playerUpdate = updates.flatMap((d) ->
+    Bacon.fromArray(d)
+  ).map(({id, t, data}) ->
+    v = view.getChildByName(id)
+    {id, t, data, v}
+  )
+
+  movers = playerUpdate
+    .filter(({t}) -> t == "d")
+    .groupBy(idKey, dataLimitGroup)
+    .flatMap((dirChanges) ->
+      stopper = dirChanges
+        .mapEnd(-> null)
+        .filter((val) -> val == null)
+        .take(1)
+
+      dirChanges
+        .toProperty()
+        .sample(33)
+        .takeUntil(stopper)
+    )
+
+  movers.onValue((({v, data}) ->
+    v.x += data.x * 10
+    v.y += data.y * 10
+  ))
+
+  positionUpdates = playerUpdate
+    .filter(({t}) -> t == "pos")
+  positionUpdates.onValue(updatePosition)
+
   user.sampledBy(enterFrame, (u, e) ->
     {id: u.hero.id, view, c}
   ).onValue(onEnterFrame)
@@ -43,20 +74,15 @@ onEnterFrame = ({id, view, c}) ->
   view.x = lerp(view.x, nX, 0.2)
   view.y = lerp(view.y, nY, 0.2)
 
-updatePlayers = (container, updates) ->
-  for {id, t, data} in updates
-    view = container.getChildByName(id)
-    doUpdatePlayer(view, t, data)
-  container
 
-doUpdatePlayer = (view, type, data) ->
-  switch type
-    when "pos"
-      view.x = data.x
-      view.y = data.y
-    else
-    #      view.scale
-      console.log("change size")
+updatePosition = ({id, v, data}) ->
+  t = new Date().getTime()
+  console.log(
+    "Delta pos", id, t,
+    Math.abs(v.x - data.x),
+    Math.abs(v.y - data.y))
+  v.x = data.x
+  v.y = data.y
 
 createBack = (w, h) ->
   g = new PIXI.Graphics()
@@ -70,6 +96,14 @@ createBack = (w, h) ->
   g.endFill()
   texture = g.generateTexture()
   new PIXI.TilingSprite(texture, w, h)
+
+idKey = (val) ->
+  val.id
+
+dataLimitGroup = (groupedStream, groupStartEvent) ->
+  dirs = groupedStream.filter(({data}) -> data?)
+  ends = groupedStream.filter(({data}) -> not data?).take(1)
+  dirs.takeUntil(ends)
 
 # linear interpolation
 lerp = (a, b, t) ->

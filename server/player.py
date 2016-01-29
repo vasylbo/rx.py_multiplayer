@@ -23,26 +23,17 @@ class PlayerEncoder(JSONEncoder):
 
 class Player:
     def __init__(self, id, name, ws_subject, size, pos):
-        log.info("New player %s" % name)
         self.id = id
         self.ws_subject = ws_subject
         self.name = name
         self.size = BehaviorSubject(size)
         self.pos = BehaviorSubject(pos)
-        self.dir = ws_subject \
+        self.dir = BehaviorSubject(None)
+
+        ws_subject \
             .to_observable() \
-            .map(lambda d: json.loads(d.data))
-
-        def scan_direction(pos, dir):
-            if dir:
-                pos["x"] += dir["x"] * 10
-                pos["y"] += dir["y"] * 10
-            return pos
-
-        self.dir \
-            .scan(scan_direction, seed=pos) \
-            .subscribe(self.pos)
-        self.dir.subscribe(lambda d: print(id, d))
+            .map(lambda d: json.loads(d.data)) \
+            .subscribe(self.dir)
 
     def partial_to_json(self):
         return PlayerEncoder(["ws_subject", "name", "dir"]).encode(self)
