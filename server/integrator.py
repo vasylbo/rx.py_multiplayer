@@ -2,6 +2,7 @@ import json
 import logging
 from functools import partial
 
+import time
 from rx import Observable
 from rx.subjects import BehaviorSubject
 
@@ -30,26 +31,43 @@ def integrate(new_players, scheduler):
         .subscribe(new_player_updates)
 
     Observable \
-        .interval(33, scheduler) \
-        .map(lambda _: players.value) \
+        .interval(16, scheduler) \
+        .map(players_interval(players)) \
         .subscribe(update)
 
     # frame ticks
-    stream_changes(player_to_change, 1000, players, scheduler) \
+    stream_changes(player_to_change, 33, players, scheduler) \
         .subscribe(broadcast_changes)
 
     # direction update ticks
-    stream_changes(player_to_direction, 33, players, scheduler) \
+    stream_changes(player_to_direction, 16, players, scheduler) \
         .subscribe(broadcast_changes)
 
 
+def players_interval(players):
+    def get_time():
+        return int(round(time.time() * 1000))
+
+    start = get_time()
+
+    def on_interval(*args):
+        nonlocal start
+        current = get_time()
+        dt = current - start
+        start = current
+        return players.value, dt * 0.001
+
+    return on_interval
+
+
 # todo: maybe make reactive
-def update(players):
+def update(d):
+    players, dt = d
     for player in players:
         direction = player.dir.value
         if direction is not None:
             position = player.pos.value
-            speed = 10
+            speed = 300 * dt
             result = {
                 "x": position["x"] + direction["x"] * speed,
                 "y": position["y"] + direction["y"] * speed

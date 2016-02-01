@@ -27,14 +27,18 @@ createView = (newOnes, updates, enterFrame, user, c) ->
 
       dirChanges
         .toProperty()
-        .sample(33)
+        .sampledBy(enterFrame, (m, e) -> [m, e])
         .takeUntil(stopper)
     )
 
-  movers.onValue((({v, data}) ->
-    v.x += data.x * 10
-    v.y += data.y * 10
-  ))
+  movers
+    .onValue(([{v, data}, dt]) ->
+      speed = c.SPEED * dt
+      v.mx += data.x * speed
+      v.my += data.y * speed
+      v.x = Math.ceil(v.mx)
+      v.y = Math.ceil(v.my)
+    )
 
   positionUpdates = playerUpdate
     .filter(({t}) -> t == "pos")
@@ -60,8 +64,8 @@ addPlayer = (container, player) =>
   name = new PIXI.Text(player.name)
   view.addChild(name)
 
-  view.x = player.pos.x
-  view.y = player.pos.y
+  view.mx = view.x = player.pos.x
+  view.my = view.y = player.pos.y
 
   container.addChild(view)
   container
@@ -71,18 +75,15 @@ onEnterFrame = ({id, view, c}) ->
   hero = view.getChildByName(id)
   nX = c.APP_WIDTH / 2 - hero.x
   nY = c.APP_HEIGHT / 2 - hero.y
-  view.x = lerp(view.x, nX, 0.2)
-  view.y = lerp(view.y, nY, 0.2)
+  view.x = Math.ceil(lerp(view.x, nX, 0.2))
+  view.y = Math.ceil(lerp(view.y, nY, 0.2))
 
 
-updatePosition = ({id, v, data}) ->
-  t = new Date().getTime()
-  console.log(
-    "Delta pos", id, t,
-    Math.abs(v.x - data.x),
-    Math.abs(v.y - data.y))
-  v.x = data.x
-  v.y = data.y
+updatePosition = ({v, data}) ->
+  v.mx = data.x
+  v.my = data.y
+  v.x = Math.ceil(v.mx)
+  v.y = Math.ceil(v.my)
 
 createBack = (w, h) ->
   g = new PIXI.Graphics()

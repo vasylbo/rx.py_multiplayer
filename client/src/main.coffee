@@ -3,6 +3,7 @@ Bacon = require("baconjs")
 {startGame} = require("./game")
 
 c =
+  SPEED: 300
   APP_WIDTH: 800
   APP_HEIGHT: 600
   MAP_WIDTH: 2000
@@ -28,8 +29,12 @@ initResize = (renderer) ->
 
 createEnterFrame = ->
   enterFrame = Bacon.fromBinder (sink) ->
+    start = new Date().getTime()
     animate = ->
-      sink()
+      current = new Date().getTime()
+      dt = current - start
+      sink(dt * 0.001)
+      start = current
       requestAnimationFrame(animate)
     requestAnimationFrame(animate)
   enterFrame
