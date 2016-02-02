@@ -61,7 +61,7 @@ createClicksStream = (container, w, h) ->
         y = cy - hh
         l = Math.sqrt(x * x + y * y)
         {x: x / l, y: y / l})
-      .mapEnd(null)
+      .mapEnd({x: 0, y: 0})
   )
 
 createBackGround = (width, height) ->

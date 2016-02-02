@@ -33,6 +33,7 @@ class Player:
         ws_subject \
             .to_observable() \
             .map(lambda d: json.loads(d.data)) \
+            .filter(lambda m: m["t"] == "d") \
             .subscribe(self.dir)
 
     def partial_to_json(self):

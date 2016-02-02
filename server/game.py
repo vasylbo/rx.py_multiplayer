@@ -5,6 +5,7 @@ from copy import copy
 from rx.concurrency import AsyncIOScheduler
 from rx.subjects import Subject
 
+import messages as mess_factory
 from connection import WSHandlerSubject, WSSubject
 from integrator import integrate
 from names import generate_name
@@ -24,9 +25,20 @@ def register(ws_subject: WSSubject, i):
 
 def send_init(player: Player):
     ws_subject = player.ws_subject
-    data = {"name": player.name,
-            "id": player.id}
+    data = mess_factory.init(player)
+    # needs refactoring
+    player \
+        .ws_subject \
+        .to_observable() \
+        .map(lambda d: json.loads(d.data)) \
+        .filter(lambda d: d["t"] == "ping") \
+        .subscribe(lambda data: send_pong(player, data))
     ws_subject.on_next(json.dumps(data))
+
+
+def send_pong(player, data):
+    m = mess_factory.pong(data["ts"])
+    player.ws_subject.on_next(json.dumps(m))
 
 
 def create_game_handler(loop):

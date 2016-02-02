@@ -1,6 +1,7 @@
 import json
 import logging
 from functools import partial
+import messages as mess_factory
 
 import time
 from rx import Observable
@@ -65,7 +66,9 @@ def update(d):
     players, dt = d
     for player in players:
         direction = player.dir.value
-        if direction is not None:
+        if direction is not None \
+                and direction["x"] != 0 \
+                and direction["y"] != 0:
             position = player.pos.value
             speed = 300 * dt
             result = {
@@ -100,11 +103,8 @@ def players_to_exits(player):
 
 
 def prepare_data(player: Player, t):
-    return lambda data: {
-        "id": player.id,
-        "t": t,
-        "data": data
-    }
+    return lambda data: mess_factory \
+        .update(player, t, data)
 
 
 def player_to_change(scheduler, player: Player):
@@ -131,26 +131,17 @@ def players_changed(players: list, operation):
 
 def new_player_updates(data):
     new_player, players = data
-    new_player_message = create_full_player_info(new_player)
+    new_player_message = mess_factory.new_player(new_player)
     for player in players:
         player.ws_subject.on_next(new_player_message)
         if player is not new_player:
             new_player.ws_subject.on_next(
-                    create_full_player_info(player))
-
-
-def create_full_player_info(player):
-    message = \
-        """{
-            "t": "new_player",
-            "data": %s
-        }""" % player.full_to_json()
-    return message
+                    mess_factory.new_player(player))
 
 
 def broadcast_changes(data):
     updates, players = data
-    raw = {"t": "up", "data": updates}
+    raw = mess_factory.broadcast_update(updates)
     message = json.dumps(raw)
     for player in players:
         player.ws_subject.on_next(message)

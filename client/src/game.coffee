@@ -8,13 +8,30 @@ connectToServer = (c) ->
   messages.ofType = (tp) ->
     @filter((m) -> m?.t == tp)
       .map(".data")
+
   messages.log("Server:")
   {messages, ws}
 
 
 logIn = ({messages, ws}) ->
-  user = messages.take(1).flatMap(({id, name}) ->
-    Bacon.combineTemplate({id, name, ws}))
+  user = messages
+    .take(1)
+    .flatMap((value) ->
+      {id, name, ts} = value
+      Bacon.combineTemplate({id, name, ws}))
+
+  pingTime = messages
+    .filter((m) -> m.t == "pong")
+    .map(({ts, lts}) ->
+      cts = new Date().getTime()
+      console.log(ts - lts, cts - ts, cts - lts)
+      {ts, lts, cts})
+  pingTime.log("ping: ")
+
+  Bacon.interval(1000).onValue(->
+    m = {t:"ping", ts:new Date().getTime()}
+    ws.send(JSON.stringify(m))
+  )
 
   newPlayers = messages
     .ofType("new_player")
@@ -38,6 +55,7 @@ startGame = (enterFrame, clicks, c) ->
 
   clicks
     .onValue((m) ->
+      m.t = "d"
       connection.ws.send(JSON.stringify(m))
     )
 
