@@ -1,4 +1,5 @@
 import time
+import json
 
 
 def get_timestamp():
@@ -22,6 +23,13 @@ def new_player(player):
         "t": "new_player",
         "data": %s
     }""" % player.full_to_json()
+
+
+def removed_player(player):
+    return json.dumps({
+        "t": "removed_player",
+        "data": player.id
+    })
 
 
 def update(player, t, data):

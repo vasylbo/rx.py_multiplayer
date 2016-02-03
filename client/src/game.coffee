@@ -20,13 +20,12 @@ logIn = ({messages, ws}) ->
       {id, name, ts} = value
       Bacon.combineTemplate({id, name, ws}))
 
-  pingTime = messages
+  messages
     .filter((m) -> m.t == "pong")
-    .map(({ts, lts}) ->
+    .onValue(({ts, lts}) ->
       cts = new Date().getTime()
       console.log(ts - lts, cts - ts, cts - lts)
-      {ts, lts, cts})
-  pingTime.log("ping: ")
+    )
 
   Bacon.interval(1000).onValue(->
     m = {t:"ping", ts:new Date().getTime()}
@@ -36,22 +35,25 @@ logIn = ({messages, ws}) ->
   newPlayers = messages
     .ofType("new_player")
 
+  removedPlayers = messages
+    .ofType("removed_player")
+
   updates = messages
     .ofType("up")
 
-  {user, newPlayers, updates}
+  {user, newPlayers, removedPlayers, updates}
 
 
 startGame = (enterFrame, clicks, c) ->
   connection = connectToServer(c)
-  {user, newPlayers, updates} = logIn(connection)
+  {user, newPlayers, removedPlayers, updates} = logIn(connection)
 
   userHero = user
     .sampledBy(newPlayers, (user, hero) -> {user, hero})
     .filter(({user, hero}) -> user.id == hero.id)
     .toProperty()
 
-  view = createView(newPlayers, updates, enterFrame, userHero, c)
+  view = createView(newPlayers, removedPlayers, updates, enterFrame, userHero, c)
 
   clicks
     .onValue((m) ->

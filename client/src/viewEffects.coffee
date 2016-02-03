@@ -1,13 +1,14 @@
 PIXI = require("pixi.js")
 Bacon = require("baconjs")
 
-createView = (newOnes, updates, enterFrame, user, c) ->
+createView = (newOnes, removedOnes, updates, enterFrame, user, c) ->
   view = new PIXI.Container()
 
   back = createBack(c.MAP_WIDTH, c.MAP_WIDTH)
   view.addChild(back)
 
   newOnes.onValue((p) -> addPlayer(view, p))
+  removedOnes.onValue((p) -> removePlayer(view, p))
 
   playerUpdate = updates.flatMap((d) ->
     Bacon.fromArray(d)
@@ -69,6 +70,11 @@ addPlayer = (container, player) =>
 
   container.addChild(view)
   container
+
+removePlayer = (container, player) ->
+  view = container.getChildByName(player)
+  console.log("removing this bastard", player, view)
+  container.removeChild(view)
 
 # center view on player
 onEnterFrame = ({id, view, c}) ->

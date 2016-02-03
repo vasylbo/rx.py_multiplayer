@@ -26,11 +26,6 @@ def integrate(new_players, scheduler):
         .scan(players_changed, []) \
         .subscribe(players)
 
-    players \
-        .zip(new_players,
-             lambda p, ps: (ps, p)) \
-        .subscribe(new_player_updates)
-
     Observable \
         .interval(16, scheduler) \
         .map(players_interval(players)) \
@@ -124,19 +119,27 @@ def players_changed(players: list, operation):
     log.info("Player with id %s %s" % (player.name, op))
     if op == "add":
         players.append(player)
+        broadcast_new_player(player, players)
     else:
         players.remove(player)
+        broadcast_removed_player(player, players)
     return players
 
 
-def new_player_updates(data):
-    new_player, players = data
+def broadcast_new_player(new_player, players):
     new_player_message = mess_factory.new_player(new_player)
+
     for player in players:
         player.ws_subject.on_next(new_player_message)
         if player is not new_player:
             new_player.ws_subject.on_next(
                     mess_factory.new_player(player))
+
+
+def broadcast_removed_player(removed_player, players):
+    m = mess_factory.removed_player(removed_player)
+    for player in players:
+        player.ws_subject.on_next(m)
 
 
 def broadcast_changes(data):
