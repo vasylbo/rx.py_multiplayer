@@ -2,6 +2,8 @@ import time
 import json
 
 
+# todo: make decorator to json.dump all this
+
 def get_timestamp():
     return int(round(time.time() * 1000))
 
@@ -18,11 +20,12 @@ def pong(client_ts):
             "lts": client_ts}
 
 
-def new_player(player):
-    return """{
+def new_players(players):
+    return json.dumps({
         "t": "new_player",
-        "data": %s
-    }""" % player.full_to_json()
+        "data": [player.full_data()
+                 for player in players]
+    })
 
 
 def removed_player(player):

@@ -36,8 +36,16 @@ class Player:
             .filter(lambda m: m["t"] == "d") \
             .subscribe(self.dir)
 
-    def partial_to_json(self):
-        return PlayerEncoder(["ws_subject", "name", "dir"]).encode(self)
+        self.dir.subscribe(lambda d: print(d))
 
-    def full_to_json(self):
-        return PlayerEncoder(["ws_subject", "dir"]).encode(self)
+    def partial_data(self):
+        return {
+            "id": self.id,
+            "size": self.size.value,
+            "pos": self.pos.value
+        }
+
+    def full_data(self):
+        data = self.partial_data()
+        data["name"] = self.name
+        return data

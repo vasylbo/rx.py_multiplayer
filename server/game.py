@@ -7,7 +7,7 @@ from rx.subjects import Subject
 
 import messages as mess_factory
 from connection import WSHandlerSubject, WSSubject
-from integrator import integrate
+from manager import manage
 from names import generate_name
 from player import Player
 
@@ -47,6 +47,7 @@ def create_game_handler(loop):
     scheduler = AsyncIOScheduler(loop)
     handler = WSHandlerSubject()
 
+    # todo: find a place where it can gracefully shutdown
     players = Subject()
 
     handler \
@@ -57,6 +58,6 @@ def create_game_handler(loop):
         .subscribe(send_init)
 
     # refactor
-    integrate(players, scheduler)
+    manage(players, scheduler)
 
     return handler
