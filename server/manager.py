@@ -14,8 +14,6 @@ log = logging.getLogger("game")
 
 
 def manage(new_players, scheduler):
-    players = BehaviorSubject([])
-
     exiting_players = new_players \
         .flat_map(players_to_exits)
 
@@ -23,19 +21,20 @@ def manage(new_players, scheduler):
 
     integrator.new_players_broadcast.subscribe(broadcast_new_player)
     integrator.removed_players_broadcast.subscribe(broadcast_removed_player)
+    integrator.collisions.subscribe(lambda data: print("collision", data))
 
-    Observable \
+    short_frame = Observable \
         .interval(16, scheduler) \
-        .map(compute_delta()) \
-        .subscribe(integrator.update)
+        .map(compute_delta())
+    short_frame.subscribe(integrator.update)
 
     # frame ticks
-    stream_changes(player_to_change, 33, players, scheduler) \
-        .subscribe(broadcast_changes)
+    stream_changes(player_to_change, 33, new_players, scheduler) \
+        .subscribe(lambda data: broadcast_changes(data, integrator))
 
     # direction update ticks
-    stream_changes(player_to_direction, 16, players, scheduler) \
-        .subscribe(broadcast_changes)
+    stream_changes(player_to_direction, 16, new_players, scheduler) \
+        .subscribe(lambda data: broadcast_changes(data, integrator))
 
 
 def compute_delta():
@@ -54,20 +53,11 @@ def compute_delta():
     return on_interval
 
 
-def stream_changes(transformer, dt, players, scheduler):
-    def to_changes(ps):
-        return Observable \
-            .from_iterable(ps, scheduler) \
-            .flat_map(partial(
-                transformer, scheduler))
-
-    return players \
-        .flat_map_latest(to_changes) \
+def stream_changes(transformer, dt, new_players, scheduler):
+    return new_players \
+        .flat_map(partial(transformer, scheduler)) \
         .buffer_with_time(dt, scheduler=scheduler) \
-        .filter(lambda cs: len(cs) > 0) \
-        .combine_latest(
-            players,
-            lambda c, p: (c, p))
+        .filter(lambda cs: len(cs) > 0)
 
 
 def players_to_exits(player):
@@ -101,7 +91,8 @@ def broadcast_new_player(value):
     # send new players to old players
     new_players_message = mess_factory.new_players(new_players)
     for player in players:
-        player.ws_subject.on_next(new_players_message)
+        if player not in new_players:
+            player.ws_subject.on_next(new_players_message)
 
     # send all players to new players
     players_message = mess_factory.new_players(players)
@@ -114,9 +105,8 @@ def broadcast_removed_player(value):
     # todo: implement
 
 
-def broadcast_changes(data):
-    updates, players = data
+def broadcast_changes(data, integrator):
+    updates = data
     raw = mess_factory.broadcast_update(updates)
     message = json.dumps(raw)
-    for player in players:
-        player.ws_subject.on_next(message)
+    integrator.broadcast(message)

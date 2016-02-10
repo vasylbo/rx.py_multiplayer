@@ -7,10 +7,7 @@ createView = (newOnes, removedOnes, updates, enterFrame, user, c) ->
   back = createBack(c.MAP_WIDTH, c.MAP_WIDTH)
   view.addChild(back)
 
-  newOnes
-    .flatMap((players) ->
-      Bacon.fromArray(players))
-    .onValue((p) -> addPlayer(view, p))
+  newOnes.onValue((p) -> addPlayer(view, p))
   removedOnes.onValue((p) -> removePlayer(view, p))
 
   playerUpdate = updates.flatMap((d) ->

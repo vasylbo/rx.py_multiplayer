@@ -34,6 +34,8 @@ logIn = ({messages, ws}) ->
 
   newPlayers = messages
     .ofType("new_player")
+    .flatMap((players) ->
+      Bacon.fromArray(players))
 
   removedPlayers = messages
     .ofType("removed_player")
