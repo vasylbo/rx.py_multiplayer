@@ -28,10 +28,11 @@ def new_players(players):
     })
 
 
-def removed_player(player):
+def removed_players(players):
     return json.dumps({
         "t": "removed_player",
-        "data": player.id
+        "data": [player.id
+                 for player in players]
     })
 
 
@@ -39,6 +40,7 @@ def update(player, t, data):
     return {
         "id": player.id,
         "t": t,
+        "ts": get_timestamp(),
         "data": data
     }
 

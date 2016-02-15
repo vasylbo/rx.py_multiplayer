@@ -7,6 +7,7 @@ import time
 from rx import Observable
 from rx.subjects import BehaviorSubject
 
+from food import create_food
 from integrator import Integrator
 from player import Player
 
@@ -21,7 +22,8 @@ def manage(new_players, scheduler):
 
     integrator.new_players_broadcast.subscribe(broadcast_new_player)
     integrator.removed_players_broadcast.subscribe(broadcast_removed_player)
-    integrator.collisions.subscribe(lambda data: print("collision", data))
+    # integrator.collisions \
+    #     .subscribe(lambda data: print("collision", data))
 
     short_frame = Observable \
         .interval(16, scheduler) \
@@ -101,8 +103,11 @@ def broadcast_new_player(value):
 
 
 def broadcast_removed_player(value):
-    players, removed_player = value
-    # todo: implement
+    players, removed_players = value
+    removed_players_msg = mess_factory \
+        .removed_players(removed_players)
+    for player in players:
+        player.ws_subject.on_next(removed_players_msg)
 
 
 def broadcast_changes(data, integrator):

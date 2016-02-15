@@ -5,11 +5,12 @@ connectToServer = (c) ->
   ws = new WebSocket(c.url)
   messages = Bacon
     .fromEventTarget(ws, 'message', (m) -> JSON.parse(m.data))
+
   messages.ofType = (tp) ->
     @filter((m) -> m?.t == tp)
-      .map(".data")
+  messages.dataOfType = (tp) ->
+    @ofType(tp).map(".data")
 
-  messages.log("Server:")
   {messages, ws}
 
 
@@ -20,11 +21,22 @@ logIn = ({messages, ws}) ->
       {id, name, ts} = value
       Bacon.combineTemplate({id, name, ws}))
 
-  messages
-    .filter((m) -> m.t == "pong")
-    .onValue(({ts, lts}) ->
+  pongs = messages
+    .ofType("pong")
+
+  timeDelta = pongs.map(
+    ({ts, lts}) ->
       cts = new Date().getTime()
-      console.log(ts - lts, cts - ts, cts - lts)
+      Math.round(cts - ts)
+  )
+
+  timeDelta.log("Ping:")
+
+  serverTime = timeDelta
+    .sampledBy(Bacon.interval(16), (dt, i) ->
+      cts = new Date().getTime()
+      ts = Math.round(cts + dt)
+      ts
     )
 
   Bacon.interval(1000).onValue(->
@@ -33,29 +45,31 @@ logIn = ({messages, ws}) ->
   )
 
   newPlayers = messages
-    .ofType("new_player")
+    .dataOfType("new_player")
     .flatMap((players) ->
       Bacon.fromArray(players))
 
   removedPlayers = messages
-    .ofType("removed_player")
+    .dataOfType("removed_player")
 
   updates = messages
     .ofType("up")
 
-  {user, newPlayers, removedPlayers, updates}
+  {user, newPlayers, removedPlayers, updates, serverTime}
 
 
 startGame = (enterFrame, clicks, c) ->
   connection = connectToServer(c)
-  {user, newPlayers, removedPlayers, updates} = logIn(connection)
+  {user, newPlayers, removedPlayers, updates, serverTime} =
+    logIn(connection)
 
   userHero = user
     .sampledBy(newPlayers, (user, hero) -> {user, hero})
     .filter(({user, hero}) -> user.id == hero.id)
     .toProperty()
 
-  view = createView(newPlayers, removedPlayers, updates, enterFrame, userHero, c)
+  view = createView(newPlayers, removedPlayers,
+    updates, enterFrame, userHero, serverTime, c)
 
   clicks
     .onValue((m) ->

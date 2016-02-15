@@ -1,7 +1,8 @@
 PIXI = require("pixi.js")
 Bacon = require("baconjs")
 
-createView = (newOnes, removedOnes, updates, enterFrame, user, c) ->
+createView = (newOnes, removedOnes, updates,
+    enterFrame, user, serverTime, c) ->
   view = new PIXI.Container()
 
   back = createBack(c.MAP_WIDTH, c.MAP_WIDTH)
@@ -10,12 +11,14 @@ createView = (newOnes, removedOnes, updates, enterFrame, user, c) ->
   newOnes.onValue((p) -> addPlayer(view, p))
   removedOnes.onValue((p) -> removePlayer(view, p))
 
-  playerUpdate = updates.flatMap((d) ->
-    Bacon.fromArray(d)
-  ).map(({id, t, data}) ->
-    v = view.getChildByName(id)
-    {id, t, data, v}
-  )
+  playerUpdate = serverTime
+    .sampledBy(updates, (t, u) -> {u, t})
+    .flatMap(({u, t}) ->
+      Bacon.fromArray(u.data)
+    ).map(({id, t, data}) ->
+      v = view.getChildByName(id)
+      {id, t, data, v}
+    )
 
   movers = playerUpdate
     .filter(({t}) -> t == "d")
@@ -33,12 +36,12 @@ createView = (newOnes, removedOnes, updates, enterFrame, user, c) ->
     )
 
   movers
-    .onValue(([{v, data}, dt]) ->
+    .onValue(([{v, direction}, dt]) ->
       speed = c.SPEED * dt
-      v.mx += data.x * speed
-      v.my += data.y * speed
-      v.x = Math.ceil(v.mx)
-      v.y = Math.ceil(v.my)
+      v.mx += direction.x * speed
+      v.my += direction.y * speed
+      v.x = Math.round(v.mx)
+      v.y = Math.round(v.my)
     )
 
   positionUpdates = playerUpdate
@@ -71,25 +74,25 @@ addPlayer = (container, player) =>
   container.addChild(view)
   container
 
-removePlayer = (container, player) ->
-  view = container.getChildByName(player)
-  console.log("removing this bastard", player, view)
-  container.removeChild(view)
+removePlayer = (container, players) ->
+  for player in players
+    view = container.getChildByName(player)
+    container.removeChild(view)
 
 # center view on player
 onEnterFrame = ({id, view, c}) ->
   hero = view.getChildByName(id)
   nX = c.APP_WIDTH / 2 - hero.x
   nY = c.APP_HEIGHT / 2 - hero.y
-  view.x = Math.ceil(lerp(view.x, nX, 0.2))
-  view.y = Math.ceil(lerp(view.y, nY, 0.2))
+  view.x = Math.round(lerp(view.x, nX, 0.2))
+  view.y = Math.round(lerp(view.y, nY, 0.2))
 
 
 updatePosition = ({v, data}) ->
   v.mx = data.x
   v.my = data.y
-  v.x = Math.ceil(v.mx)
-  v.y = Math.ceil(v.my)
+  v.x = Math.round(v.mx)
+  v.y = Math.round(v.my)
 
 createBack = (w, h) ->
   g = new PIXI.Graphics()

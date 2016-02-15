@@ -1,7 +1,7 @@
 import math
 from itertools import combinations
 
-from rx.subjects import Subject
+from rx.subjects import Subject, BehaviorSubject
 
 
 class Integrator:
@@ -17,6 +17,9 @@ class Integrator:
         self.new_players_broadcast = Subject()
         self.removed_players_broadcast = Subject()
         self.collisions = Subject()
+        self.players = BehaviorSubject([])
+        self.players_count = self.players \
+            .map(lambda ps: len(ps))
 
     def add_player(self, player):
         self._new_players.append(player)
@@ -30,33 +33,26 @@ class Integrator:
 
     def update(self, dt):
         if len(self._new_players):
-            self._players.extend(self._new_players)
-            self.new_players_broadcast.on_next(
-                    (self._players, self._new_players.copy()))
-            self._new_players.clear()
+            self._do_add_players()
 
-        self.integrate_speed(dt)
-        self.collide()
+        self._integrate_speed(dt)
+        self._collide()
 
         if len(self._removed_players):
-            for p in self._removed_players:
-                self._players.remove(p)
-            self.removed_players_broadcast.on_next(
-                    (self._players, self._removed_players.copy()))
-            self._removed_players.clear()
+            self._do_remove_players()
 
-    def collide(self):
+    def _collide(self):
         for a, b in combinations(self._players, 2):
             posa = a.pos.value
             posb = b.pos.value
             sizea = a.size.value
             sizeb = b.size.value
 
-            distance = math.sqrt((posa["x"] - posb["x"])**2 + (posa["y"] - posb["y"])**2)
+            distance = math.sqrt((posa["x"] - posb["x"]) ** 2 + (posa["y"] - posb["y"]) ** 2)
             if distance < sizea + sizeb:
                 self.collisions.on_next((a, b))
 
-    def integrate_speed(self, dt):
+    def _integrate_speed(self, dt):
         for player in self._players:
             direction = player.dir.value
             if direction is not None \
@@ -69,3 +65,18 @@ class Integrator:
                     "y": position["y"] + direction["y"] * speed
                 }
                 player.pos.on_next(result)
+
+    def _do_add_players(self):
+        self._players.extend(self._new_players)
+        self.new_players_broadcast.on_next(
+                (self._players, self._new_players.copy()))
+        self._new_players.clear()
+        self.players.on_next(self._players)
+
+    def _do_remove_players(self):
+        for p in self._removed_players:
+            self._players.remove(p)
+        self.removed_players_broadcast.on_next(
+                (self._players, self._removed_players.copy()))
+        self._removed_players.clear()
+        self.players.on_next(self._players)
